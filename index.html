@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диагностика реакции на изменения</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dark-green: #1C3829;
+    --mid-green: #2D5440;
+    --teal: #3DAA72;
+    --teal-light: #5DC48C;
+    --orange: #E8A020;
+    --cream: #F2EDE4;
+    --cream-dark: #E8E1D6;
+    --text-dark: #1A2E24;
+    --text-mid: #3A4E42;
+    --white: #FFFFFF;
+    --card-border: #D6CFC4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--cream);
+    overflow: hidden;
+    font-family: 'Manrope', sans-serif;
+  }
+
+  /* Масштабируемый 16:9 контейнер */
+  #scaler {
+    position: absolute;
+    width: 960px;
+    height: 540px;
+    transform-origin: top left;
+  }
+
+  #app {
+    width: 960px;
+    height: 540px;
+    position: relative;
+    overflow: hidden;
+    background: var(--cream);
+  }
+
+  .screen {
+    display: none;
+    position: absolute; inset: 0;
+    animation: fadeIn 0.3s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── INTRO ─── */
+  #screen-intro {
+    background: var(--dark-green);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 72px;
+  }
+
+  .intro-badge {
+    background: rgba(61,170,114,0.2); color: var(--teal-light);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 4px; margin-bottom: 20px; display: inline-block;
+  }
+  .intro-title { font-size: 46px; font-weight: 800; color: var(--white); line-height: 1.1; max-width: 560px; margin-bottom: 12px; }
+  .intro-subtitle { font-size: 15px; color: rgba(255,255,255,0.5); font-style: italic; max-width: 460px; margin-bottom: 32px; line-height: 1.5; }
+  .intro-meta { display: flex; gap: 32px; margin-bottom: 40px; }
+  .meta-item { display: flex; flex-direction: column; gap: 3px; }
+  .meta-value { font-size: 28px; font-weight: 800; color: var(--teal-light); }
+  .meta-label { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .btn-start {
+    background: var(--teal); color: var(--white); border: none;
+    padding: 14px 32px; font-size: 14px; font-weight: 700;
+    font-family: 'Manrope', sans-serif; border-radius: 6px; cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .btn-start:hover { background: var(--teal-light); transform: translateY(-1px); }
+
+  /* ─── QUESTION ─── */
+  #screen-question { flex-direction: column; }
+
+  .q-header {
+    background: var(--dark-green); padding: 0 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; height: 42px;
+  }
+  .q-progress-wrap { display: flex; align-items: center; gap: 14px; flex: 1; }
+  .progress-bar-track { flex: 1; max-width: 260px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width 0.4s ease; }
+  .q-counter { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); white-space: nowrap; }
+  .q-logo { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+
+  .q-body { flex: 1; padding: 18px 40px 0; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+
+  .q-situation-label {
+    background: var(--teal); color: var(--white);
+    font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 3px; margin-bottom: 5px;
+    display: inline-block; align-self: flex-start; flex-shrink: 0;
+  }
+  .q-title { font-size: 19px; font-weight: 800; color: var(--text-dark); margin-bottom: 7px; line-height: 1.2; flex-shrink: 0; }
+  .q-situation-text {
+    font-size: 12px; line-height: 1.5; color: var(--text-mid);
+    background: var(--white); border-left: 3px solid var(--teal);
+    padding: 9px 14px; border-radius: 0 6px 6px 0;
+    margin-bottom: 10px; flex-shrink: 0;
+  }
+  .q-question { font-size: 13px; font-weight: 700; color: var(--text-dark); margin-bottom: 10px; flex-shrink: 0; }
+
+  .options-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 7px; align-content: start; align-items: start;
+  }
+  .option-btn {
+    background: var(--white); border: 2px solid var(--card-border);
+    border-radius: 7px; padding: 9px 12px;
+    text-align: left; cursor: pointer;
+    transition: all 0.18s; font-family: 'Manrope', sans-serif;
+    display: flex; flex-direction: column;
+  }
+  .option-btn:hover { border-color: var(--teal); box-shadow: 0 3px 10px rgba(29,56,41,0.1); }
+  .option-btn.selected { border-color: var(--teal); background: rgba(61,170,114,0.06); }
+  .option-btn.selected .option-label { background: var(--teal); color: var(--white); }
+
+  .option-label {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 21px; height: 21px; border-radius: 50%;
+    background: var(--cream-dark); color: var(--text-mid);
+    font-size: 10px; font-weight: 800;
+    margin-bottom: 5px; flex-shrink: 0; transition: all 0.18s;
+  }
+  .option-text { font-size: 11px; line-height: 1.5; color: var(--text-mid); font-weight: 400; }
+
+  .q-footer {
+    height: 48px; padding: 0 40px;
+    display: flex; align-items: center; justify-content: flex-end;
+    border-top: 1px solid var(--cream-dark); flex-shrink: 0;
+  }
+  .btn-next {
+    background: var(--dark-green); color: var(--white); border: none;
+    padding: 9px 26px; font-size: 12px; font-weight: 700;
+    font-family: 'Manrope', sans-serif; border-radius: 6px; cursor: pointer;
+    transition: all 0.2s; opacity: 0.3; pointer-events: none;
+  }
+  .btn-next.enabled { opacity: 1; pointer-events: all; }
+  .btn-next.enabled:hover { background: var(--mid-green); }
+
+  /* ─── RESULTS ─── */
+  #screen-result { flex-direction: column; }
+
+  .result-header {
+    background: var(--dark-green); height: 42px; padding: 0 48px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .result-header-text { color: rgba(255,255,255,0.35); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .result-body { flex: 1; padding: 20px 48px; overflow-y: auto; min-height: 0; }
+
+  .result-profile-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .result-title { font-size: 28px; font-weight: 800; color: var(--text-dark); line-height: 1.15; margin-bottom: 5px; }
+  .result-desc { font-size: 12px; line-height: 1.6; color: var(--text-mid); max-width: 580px; margin-bottom: 14px; }
+
+  .result-score-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .score-chip { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--cream-dark); color: var(--text-mid); }
+  .score-chip.dominant { background: var(--teal); color: var(--white); }
+
+  .result-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+  .result-card { background: var(--white); border-radius: 7px; padding: 12px 14px; border: 1px solid var(--card-border); }
+  .result-card.full-width { grid-column: 1 / -1; background: var(--dark-green); border-color: var(--dark-green); }
+  .result-card-title { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 7px; color: var(--teal); }
+  .result-card.full-width .result-card-title { color: var(--teal-light); }
+  .result-card ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .result-card ul li { font-size: 11px; line-height: 1.5; color: var(--text-mid); padding-left: 15px; position: relative; }
+  .result-card ul li::before { content: '→'; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
+  .result-card.full-width ul li { color: rgba(255,255,255,0.75); }
+  .result-card.full-width ul li::before { color: var(--teal-light); }
+
+  .btn-restart { background: transparent; border: 2px solid var(--dark-green); color: var(--text-dark); padding: 8px 22px; font-size: 12px; font-weight: 700; font-family: 'Manrope', sans-serif; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .btn-restart:hover { background: var(--dark-green); color: var(--white); }
+
+  .profile-A .result-profile-badge { background: rgba(61,170,114,0.15); color: var(--teal); }
+  .profile-B .result-profile-badge { background: rgba(83,120,200,0.12); color: #4A72C4; }
+  .profile-C .result-profile-badge { background: rgba(120,100,180,0.12); color: #7A64B4; }
+  .profile-D .result-profile-badge { background: rgba(232,160,32,0.15); color: var(--orange); }
+  .profile-MIX .result-profile-badge { background: rgba(61,170,114,0.12); color: var(--teal); }
+  .profile-A .result-card-title { color: var(--teal); }
+  .profile-B .result-card-title { color: #4A72C4; }
+  .profile-C .result-card-title { color: #7A64B4; }
+  .profile-D .result-card-title { color: var(--orange); }
+  .profile-A .result-card ul li::before { color: var(--teal); }
+  .profile-B .result-card ul li::before { color: #4A72C4; }
+  .profile-C .result-card ul li::before { color: #7A64B4; }
+  .profile-D .result-card ul li::before { color: var(--orange); }
+</style>
+</head>
+<body>
+<div id="scaler">
+  <div id="app">
+
+    <div id="screen-intro" class="screen active">
+      <div class="intro-badge">Самодиагностика</div>
+      <h1 class="intro-title">Как ты реагируешь на изменения?</h1>
+      <p class="intro-subtitle">5 ситуаций — и ты узнаешь свой паттерн реакции, сильные стороны и зоны роста</p>
+      <div class="intro-meta">
+        <div class="meta-item"><span class="meta-value">5</span><span class="meta-label">ситуаций</span></div>
+        <div class="meta-item"><span class="meta-value">~5</span><span class="meta-label">минут</span></div>
+        <div class="meta-item"><span class="meta-value">4</span><span class="meta-label">профиля</span></div>
+      </div>
+      <button class="btn-start" onclick="startTest()">Начать диагностику</button>
+    </div>
+
+    <div id="screen-question" class="screen">
+      <div class="q-header">
+        <div class="q-progress-wrap">
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+          <span class="q-counter" id="q-counter">1 / 5</span>
+        </div>
+        <span class="q-logo">Управление изменениями</span>
+      </div>
+      <div class="q-body" id="q-body"></div>
+      <div class="q-footer">
+        <button class="btn-next" id="btn-next" onclick="nextQuestion()">Следующий вопрос →</button>
+      </div>
+    </div>
+
+    <div id="screen-result" class="screen">
+      <div class="result-header">
+        <span class="result-header-text">Диагностика завершена</span>
+        <span class="result-header-text">Управление изменениями</span>
+      </div>
+      <div class="result-body" id="result-body"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Масштабирование под размер окна с сохранением 16:9
+function scaleApp() {
+  const W = 960, H = 540;
+  const scaler = document.getElementById('scaler');
+  const scaleX = window.innerWidth / W;
+  const scaleY = window.innerHeight / H;
+  const scale = Math.min(scaleX, scaleY);
+  const left = (window.innerWidth - W * scale) / 2;
+  const top = (window.innerHeight - H * scale) / 2;
+  scaler.style.transform = `scale(${scale})`;
+  scaler.style.left = left + 'px';
+  scaler.style.top = top + 'px';
+}
+window.addEventListener('resize', scaleApp);
+scaleApp();
+
+const questions = [
+  { title:"Объявление крупной реорганизации", situation:"Утро понедельника. Топ-менеджмент объявляет о масштабной реорганизации: несколько департаментов объединят, изменится оргструктура, часть процессов автоматизируют. Детали сообщат через 2–3 недели. Известно только, что изменения затронут твою область.", question:"Что ты делаешь в первую очередь в ближайшие 2–3 часа?", options:{ A:"Сразу собираю информацию: ищу контакты тех, кто может знать детали, пишу руководству с вопросами, составляю черновик плана действий на случай разных сценариев.", B:"Чувствую тревогу, но внешне держусь спокойно. Анализирую возможные риски, прокручиваю варианты «что если». Делюсь переживаниями только с близким коллегой.", C:"Жду официальных инструкций и работаю в обычном режиме — зачем волноваться, если детали появятся через 2–3 недели?", D:"Испытываю раздражение: «Опять всё меняют!» В разговорах с коллегами высказываю скепсис по поводу этих изменений." } },
+  { title:"Внезапное изменение приоритетов проекта", situation:"Три месяца работы, две недели до финиша. Вчера вечером руководство написало: «Останавливаем проект. Переключаемся на другое направление, детали завтра». Тебе нужно сообщить команде, что проект закрывается.", question:"Как ты готовишься к встрече с командой и что чувствуешь?", options:{ A:"Сразу запрашиваю у руководства максимум информации о новом направлении, чтобы дать команде чёткую картину: что закрываем, почему, куда идём дальше.", B:"Чувствую себя выжатым. Тщательно продумываю каждое слово, боюсь, что команда потеряет мотивацию. Пытаюсь предусмотреть все возможные вопросы.", C:"Жду встречи с руководством — пока нет полной картины, не спешу объявлять команде.", D:"Испытываю гнев: «Три месяца работы впустую!» Понимаю, что на встрече будет сложно скрывать недовольство." } },
+  { title:"Новая система, которую нужно освоить", situation:"Компания внедряет новую систему управления проектами. Старая отключается через месяц. Новая выглядит сложнее. Есть обучающие материалы и тренинг на следующей неделе. Параллельно — горящие дедлайны.", question:"Какой у тебя подход к освоению новой системы?", options:{ A:"Сразу начинаю изучать: смотрю видео, создаю тестовый проект. Хочу освоить до тренинга. Могу пожертвовать парой часов сна.", B:"Изучаю тщательно, делаю заметки, сравниваю со старой. Переживаю, что не успею освоить до отключения старой системы.", C:"Пока фокусируюсь на дедлайнах. Новую изучу после тренинга — там всё объяснят.", D:"Раздражён: «Старая система работала отлично, зачем усложнять?» Осваиваю новую только под давлением." } },
+  { title:"Внезапный уход ключевого сотрудника", situation:"Один из самых опытных сотрудников (3–4 года в команде, знает все процессы) увольняется через две недели. Замены нет, найм займёт 1,5–2 месяца. На нём несколько важных задач.", question:"Что ты делаешь и чувствуешь в первые часы после этой новости?", options:{ A:"Сразу составляю план: как передать знания за две недели, кого переключить на его задачи, запускаю срочный найм.", B:"Чувствую тревогу: «Как справимся?» Тщательно анализирую риски: где критические пробелы, какие проекты под угрозой.", C:"Жду его отработки, чтобы понять масштаб передачи дел. Пока преждевременно паниковать.", D:"Испытываю обиду: «Как он мог так поступить с командой? Мы столько в него вложили!»" } },
+  { title:"Изменение формата работы команды", situation:"Руководство вводит новые правила: фиксированный график, новые требования к документированию, изменение структуры встреч. Ты привык к старому формату. Команда реагирует по-разному. Переход через неделю.", question:"Как ты реагируешь на это изменение?", options:{ A:"Сразу адаптирую процессы: изучаю новые требования, планирую переходный период, ищу информацию, как другие команды уже внедрили это.", B:"Переживаю: как сохранить эффективность? Тщательно планирую, как минимизировать риски для команды.", C:"Принимаю решение и жду подробных инструкций. Первые недели понаблюдаю, потом скорректирую.", D:"Расстроен: «Старый формат работал отлично». В разговорах с коллегами выражаю сомнения в целесообразности изменений." } }
+];
+
+const profiles = {
+  A:{ label:"Проактивный", title:"Проактивный тип реакции", desc:"Ты быстро переходишь к действию и фокусируешься на решениях. В неопределённости не теряешься — сразу собираешь информацию, составляешь планы и ведёшь команду вперёд.", strengths:["Скорость реакции и способность вести команду вперёд","Энергия и готовность брать инициативу","Фокус на результате, а не на переживаниях"], risks:["Можешь торопить команду, которая адаптируется медленнее","Иногда пропускаешь эмоциональную фазу — свою и команды","Риск выгорания из-за постоянного напряжения"], actions:["Дай команде время пройти через эмоциональные этапы адаптации","Помни: люди работают в разном темпе, и это нормально","Следи за своим уровнем энергии, чтобы не выгореть"] },
+  B:{ label:"Аналитический", title:"Аналитический тип реакции", desc:"Ты тщательно взвешиваешь риски и анализируешь последствия перед тем, как действовать. У тебя развита эмпатия и глубокая забота о команде.", strengths:["Глубокий анализ рисков — ты предвидишь проблемы заранее","Высокая эмпатия к команде","Тщательная подготовка к изменениям"], risks:["Можешь застревать в анализе, откладывая действия","Высокий уровень тревоги — это эмоционально затратно","Команда может воспринять твою осторожность как нерешительность"], actions:["Установи дедлайн: «До [дата] анализирую, после — действую»","Проговаривай команде план, а не только риски","После выявления рисков сразу формулируй: «Что я сделаю, чтобы этого избежать?»"] },
+  C:{ label:"Ожидающий", title:"Ожидающий тип реакции", desc:"Ты предпочитаешь иметь полную картину перед тем, как начать действовать. Ждёшь чётких инструкций, прежде чем двигаться вперёд.", strengths:["Спокойствие в неопределённости — ты не паникуешь","Действуешь обдуманно, когда появляется полная информация","Не создаёшь лишний хаос преждевременными действиями"], risks:["Команда может воспринять твою позицию как нерешительность","Можешь упустить время для подготовки, пока ждёшь ясности","В быстро меняющейся среде полной ясности может никогда не быть"], actions:["Действуй на основе имеющейся информации, не жди 100% ясности","Объясняй команде: «Жду деталей, но вот что я делаю уже сейчас…»","Устанавливай контрольные точки — когда начнёшь действовать, если информации всё ещё нет"] },
+  D:{ label:"Сопротивляющийся", title:"Сопротивляющийся тип реакции", desc:"Ты критически оцениваешь необходимость изменений. Твоя первая реакция — сопротивление и поиск аргументов «почему это плохая идея».", strengths:["Видишь недостатки изменений, которые другие пропускают","Задаёшь важные вопросы, которые улучшают качество решений","Защищаешь команду от необдуманных экспериментов"], risks:["Можешь неосознанно транслировать негативное отношение команде","Команда не воспринимает изменение всерьёз, если ты сам в него не веришь","Застревание в фазе гнева мешает двигаться дальше"], actions:["Решение принято — фокусируйся на «как сделать лучше»","Найди хотя бы одну пользу изменения для команды и транслируй её","Помни: если ты против — команда тоже. Если ищешь возможности — команда тоже"] },
+  MIX:{ label:"Гибкий", title:"Гибкий тип реакции", desc:"Твои ответы распределились равномерно — ты реагируешь по-разному в зависимости от ситуации. Это само по себе признак адаптивности.", strengths:["Адаптивность — ты не застреваешь в одном паттерне","Разные ситуации вызывают разные, контекстуальные реакции","Способность гибко подстраиваться под обстоятельства"], risks:["Отсутствие выраженного паттерна может означать непоследовательность","Важно понять, в каких ситуациях ты теряешь почву под ногами"], actions:["Обрати внимание на ситуации, где чаще выбирал определённый тип реакции","В каких изменениях ты проактивен? В каких — сопротивляешься?","Это подскажет твои триггеры и зоны роста"] }
+};
+
+let currentQ=0, answers=[], selectedOption=null;
+
+function startTest(){ showScreen('screen-question'); renderQuestion(0); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderQuestion(idx){
+  const q=questions[idx]; selectedOption=null;
+  document.getElementById('q-counter').textContent=`${idx+1} / ${questions.length}`;
+  document.getElementById('progress-fill').style.width=`${(idx/questions.length)*100}%`;
+  const btn=document.getElementById('btn-next');
+  btn.classList.remove('enabled');
+  btn.textContent=idx<questions.length-1?'Следующий вопрос →':'Посмотреть результат →';
+  document.getElementById('q-body').innerHTML=`
+    <div class="q-situation-label">Ситуация ${idx+1}</div>
+    <h2 class="q-title">${q.title}</h2>
+    <div class="q-situation-text">${q.situation}</div>
+    <p class="q-question">${q.question}</p>
+    <div class="options-grid">
+      ${Object.entries(q.options).map(([k,t])=>`
+        <button class="option-btn" onclick="selectOption('${k}',this)">
+          <div class="option-label">${k}</div>
+          <div class="option-text">${t}</div>
+        </button>`).join('')}
+    </div>`;
+}
+
+function selectOption(key,btn){
+  document.querySelectorAll('.option-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected'); selectedOption=key;
+  document.getElementById('btn-next').classList.add('enabled');
+}
+
+function nextQuestion(){
+  if(!selectedOption) return;
+  answers.push(selectedOption);
+  if(currentQ<questions.length-1){ currentQ++; renderQuestion(currentQ); }
+  else showResults();
+}
+
+function showResults(){
+  const counts={A:0,B:0,C:0,D:0};
+  answers.forEach(a=>counts[a]++);
+  const max=Math.max(...Object.values(counts));
+  const dominant=Object.entries(counts).filter(([,v])=>v===max).map(([k])=>k);
+  const profileKey=(dominant.length>=3||(dominant.length===2&&max<=2))?'MIX':dominant[0];
+  const p=profiles[profileKey];
+  document.getElementById('screen-result').className=`screen active profile-${profileKey}`;
+  document.getElementById('result-body').innerHTML=`
+    <div class="result-profile-badge">${p.label}</div>
+    <h2 class="result-title">${p.title}</h2>
+    <p class="result-desc">${p.desc}</p>
+    <div class="result-score-row">${Object.entries(counts).map(([k,v])=>`<span class="score-chip ${k===profileKey?'dominant':''}">${k}: ${v}</span>`).join('')}</div>
+    <div class="result-sections">
+      <div class="result-card"><div class="result-card-title">Сильные стороны</div><ul>${p.strengths.map(s=>`<li>${s}</li>`).join('')}</ul></div>
+      <div class="result-card"><div class="result-card-title">Твои риски</div><ul>${p.risks.map(r=>`<li>${r}</li>`).join('')}</ul></div>
+      <div class="result-card full-width"><div class="result-card-title">Что делать</div><ul>${p.actions.map(a=>`<li>${a}</li>`).join('')}</ul></div>
+    </div>
+    <button class="btn-restart" onclick="restartTest()">← Пройти ещё раз</button>`;
+  showScreen('screen-result');
+}
+
+function restartTest(){
+  currentQ=0; answers=[]; selectedOption=null;
+  document.getElementById('screen-result').className='screen';
+  showScreen('screen-intro');
+}
+</script>
+</body>
+</html>
